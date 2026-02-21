@@ -2,6 +2,7 @@
 captures/
 diagnostics/
 state/
+.cache/
 
 # Python
 __pycache__/
