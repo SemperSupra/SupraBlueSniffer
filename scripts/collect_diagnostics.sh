@@ -5,10 +5,58 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
-OUT_DIR="${1:-diagnostics}"
+usage() {
+  cat <<USAGE
+Usage: $0 [OUT_DIR] [--redact]
+
+Collect host diagnostics and write a timestamped report.
+
+Options:
+  --redact      Mask sensitive values (user/home/path serials)
+  --log-level LEVEL   Set shell log level: NONE, ERROR, WARN, INFO, DEBUG
+  --quiet             Equivalent to error-only logs
+  -h, --help    Show help
+USAGE
+}
+
+OUT_DIR="diagnostics"
+REDACT=0
+POSITIONAL=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --redact)
+      REDACT=1
+      shift
+      ;;
+    --log-level)
+      BLUESNIFFER_LOG_LEVEL="$2"
+      export BLUESNIFFER_LOG_LEVEL
+      shift 2
+      ;;
+    --quiet)
+      BLUESNIFFER_QUIET=1
+      export BLUESNIFFER_QUIET
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ ${#POSITIONAL[@]} -gt 0 ]]; then
+  OUT_DIR="${POSITIONAL[0]}"
+fi
+
 mkdir -p "$OUT_DIR"
 TS="$(date '+%Y%m%d_%H%M%S')"
 REPORT="$OUT_DIR/host-diagnostics-$TS.txt"
@@ -39,7 +87,24 @@ collect_usb_serial_details() {
   shopt -u nullglob
 }
 
-{
+redact_stream() {
+  local esc_home
+  esc_home="$(printf '%s\n' "$HOME" | sed -e 's/[].[^$\\/*]/\\&/g')"
+  sed -E \
+    -e "s/${esc_home}/<HOME>/g" \
+    -e 's#(/home/)[^/ ]+#\1<user>#g' \
+    -e 's#^(user: ).*$#\1<redacted>#' \
+    -e 's#^(groups: ).*$#\1<redacted>#' \
+    -e 's#^([[:space:]]*serial: ).*$#\1<redacted>#' \
+    -e 's#(SERIAL_PORT=)/dev/[A-Za-z0-9._-]+#\1<redacted>#g' \
+    -e 's#(serial_port=)/dev/[A-Za-z0-9._-]+#\1<redacted>#g'
+}
+
+if [[ $REDACT -eq 1 ]]; then
+  log "Diagnostics redaction enabled"
+fi
+
+diagnostics_body() {
   echo "BlueSniffer Host Diagnostics"
   echo "Generated: $(date --iso-8601=seconds)"
 
@@ -81,8 +146,14 @@ collect_usb_serial_details() {
   done
 
   print_section "USB Serial Devices"
-  if ls /dev/ttyUSB* /dev/ttyACM* >/dev/null 2>&1; then
-    ls -l /dev/ttyUSB* /dev/ttyACM* 2>/dev/null
+  tty_ports=()
+  shopt -s nullglob
+  for tty in /dev/ttyUSB* /dev/ttyACM*; do
+    tty_ports+=("$tty")
+  done
+  shopt -u nullglob
+  if [[ ${#tty_ports[@]} -gt 0 ]]; then
+    ls -l "${tty_ports[@]}" 2>/dev/null
     collect_usb_serial_details
   else
     echo "No /dev/ttyUSB* or /dev/ttyACM* devices found"
@@ -163,6 +234,12 @@ collect_usb_serial_details() {
   else
     echo "check_sniffer_state.sh missing"
   fi
-} | tee "$REPORT"
+}
+
+if [[ $REDACT -eq 1 ]]; then
+  diagnostics_body | redact_stream | tee "$REPORT"
+else
+  diagnostics_body | tee "$REPORT"
+fi
 
 log "Diagnostics report written to $REPORT"

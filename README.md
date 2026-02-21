@@ -1,6 +1,28 @@
-# BlueSniffer
+# SupraBlueSniffer
 
 Idempotent host bootstrap, diagnostics, and capture tooling for Nordic/Adafruit BLE sniffer workflows on Ubuntu.
+
+## What This Project Is
+
+SupraBlueSniffer is an operations-focused helper project for getting an Adafruit/Nordic BLE sniffer host into a known-good state quickly and repeatably. It focuses on:
+
+- Host setup and dependency checks
+- Wireshark/tshark extcap readiness
+- Firmware package selection/staging
+- Flash orchestration checks
+- Repeatable diagnostics and capture tooling
+
+## Real-World Open Source Projects Using This Device Class
+
+- Adafruit BLE Sniffer Python API: https://github.com/adafruit/Adafruit_BLESniffer_Python
+  - Python capture workflow for Adafruit Bluefruit LE Sniffer with PCAP output.
+- Raccoon BLE Sniffer: https://github.com/bluekitchen/raccoon
+  - Open-source BLE sniffer firmware + host tooling for Nordic/compatible devices.
+- Bsniffhub: https://github.com/homewsn/bsniffhub
+  - Multi-sniffer BLE capture/decryption bridge for Wireshark/PCAP pipelines.
+
+More detail: `docs/OPEN_SOURCE_ECOSYSTEM.md`
+Quick chooser table: `docs/OPEN_SOURCE_ECOSYSTEM.md` (Which Project Should I Use?)
 
 ## Scripts
 
@@ -62,6 +84,12 @@ Force firmware redownload:
 
 ```bash
 ./scripts/fetch_nordic_firmware.sh --force-download
+```
+
+Collect diagnostics with redaction for safer sharing:
+
+```bash
+./scripts/collect_diagnostics.sh diagnostics --redact
 ```
 
 Auto-flash (best effort):
@@ -143,6 +171,34 @@ Helpful workflow:
 3. Pick a target MAC and run focused capture while triggering actions in the companion app/device.
 4. Re-check for `btatt` frames to identify command/data exchanges.
 
+## Logging Controls
+
+Shell scripts support both environment and CLI-based log controls:
+
+```bash
+BLUESNIFFER_LOG_LEVEL=DEBUG ./scripts/run_all.sh
+BLUESNIFFER_QUIET=1 ./scripts/run_all.sh
+./scripts/run_all.sh --log-level DEBUG
+./scripts/setup_host.sh --quiet
+```
+
+Python capture tools support CLI log controls:
+
+```bash
+./scripts/capture_scapy_lookup_crosscheck.py --log-level DEBUG
+./scripts/track_ble_lifecycle.py --quiet
+```
+
+## Runtime Paths
+
+Project-managed runtime data uses non-hidden directories:
+
+- `captures/` for capture files
+- `diagnostics/` for report output
+- `state/cache/` for cached remote registry data
+- `state/locks/` for capture lock coordination
+- `state/firmware/` fallback firmware state when home cache is unavailable
+
 ## Scapy Lookup Cross-Check Script
 
 Use this script to collect a sample capture, parse packet examples with Scapy, run device/vendor lookups, and cross-check what each source reports:
@@ -165,6 +221,12 @@ Run with live capture (auto-detects nRF interface):
 ./scripts/capture_scapy_lookup_crosscheck.py --duration 60
 ```
 
+Recommended stability flags for busy environments:
+
+```bash
+./scripts/capture_scapy_lookup_crosscheck.py --duration 60 --heartbeat-sec 5 --lock-timeout 30 --max-scapy-packets 5000 --lookup-workers 6 --max-unique-devices 2000 --display-filter "btle || btatt"
+```
+
 Run against an existing capture file:
 
 ```bash
@@ -185,6 +247,12 @@ Analyze live traffic:
 
 ```bash
 ./scripts/track_ble_lifecycle.py --duration 60
+```
+
+Use bounded timeline and explicit parse timeout controls:
+
+```bash
+./scripts/track_ble_lifecycle.py --duration 60 --max-events-per-device 2000 --parse-timeout-sec 180 --heartbeat-sec 5 --display-filter "btle || btatt"
 ```
 
 Track a specific device only:
@@ -213,7 +281,14 @@ See `docs/REFLASH_GUIDE.md` for hardware/software prerequisites and Adafruit-spe
 Adafruit references:
 - https://learn.adafruit.com/introducing-the-adafruit-bluefruit-le-sniffer/faqs
 - https://learn.adafruit.com/introducing-the-adafruit-bluefruit-le-sniffer/usb-driver-install
+- https://learn.adafruit.com/introducing-the-adafruit-bluefruit-le-sniffer
+- https://learn.adafruit.com/introducing-the-adafruit-bluefruit-le-sniffer/using-with-sniffer-v2-and-python3
+- https://learn.adafruit.com/introducing-the-adafruit-bluefruit-le-sniffer/python-api
 
 ## Session Review
 
 See `docs/SESSION_REVIEW.md` for a retrospective and concrete recommendations.
+
+## Backlog
+
+See `docs/BACKLOG.md` for deferred correctness/operability work items.

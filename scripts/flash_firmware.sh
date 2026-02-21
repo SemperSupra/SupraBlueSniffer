@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
 usage() {
@@ -19,6 +19,8 @@ Options:
   --serial-port PORT     Sniffer serial port (default: auto-detect or last_port.txt)
   --force                Flash even if sniffer appears operational
   --best-effort          Do not fail if no supported flashing backend is available
+  --log-level LEVEL      Set shell log level: NONE, ERROR, WARN, INFO, DEBUG
+  --quiet                Equivalent to error-only logs
   -h, --help             Show help
 USAGE
 }
@@ -46,6 +48,16 @@ while [[ $# -gt 0 ]]; do
       BEST_EFFORT=1
       shift
       ;;
+    --log-level)
+      BLUESNIFFER_LOG_LEVEL="$2"
+      export BLUESNIFFER_LOG_LEVEL
+      shift 2
+      ;;
+    --quiet)
+      BLUESNIFFER_QUIET=1
+      export BLUESNIFFER_QUIET
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -69,26 +81,26 @@ auto_detect_serial_port() {
     fi
   fi
 
-  local candidate
-  for candidate in /dev/ttyUSB0 /dev/ttyACM0; do
-    [[ -e "$candidate" ]] && { printf '%s\n' "$candidate"; return 0; }
-  done
-
-  candidate="$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1 || true)"
-  [[ -n "$candidate" ]] && { printf '%s\n' "$candidate"; return 0; }
-
-  return 1
+  first_serial_port
 }
 
 sniffer_operational() {
   local port="$1"
+  local line
+  local firmware_state=""
   local state
   state="$("$SCRIPT_DIR/check_sniffer_state.sh" --serial-port "$port" 2>/dev/null || true)"
   if [[ -z "$state" ]]; then
     return 1
   fi
-  eval "$state"
-  [[ "${FIRMWARE_STATE:-unknown}" == "capture-capable" ]]
+  while IFS= read -r line; do
+    case "$line" in
+      FIRMWARE_STATE=*)
+        firmware_state="${line#FIRMWARE_STATE=}"
+        ;;
+    esac
+  done <<< "$state"
+  [[ "$firmware_state" == "capture-capable" ]]
 }
 
 flash_with_nrfjprog() {

@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
 usage() {
@@ -27,6 +27,8 @@ Options:
   --serial-port PORT       Serial port to use for flash (default: auto-detect)
   --skip-brltty-removal    Do not remove brltty package
   --skip-apt               Skip apt package installation
+  --log-level LEVEL        Set shell log level: NONE, ERROR, WARN, INFO, DEBUG
+  --quiet                  Equivalent to error-only logs
   -h, --help               Show this help
 USAGE
 }
@@ -97,6 +99,16 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-apt)
       SKIP_APT=1
+      shift
+      ;;
+    --log-level)
+      BLUESNIFFER_LOG_LEVEL="$2"
+      export BLUESNIFFER_LOG_LEVEL
+      shift 2
+      ;;
+    --quiet)
+      BLUESNIFFER_QUIET=1
+      export BLUESNIFFER_QUIET
       shift
       ;;
     -h|--help)
@@ -248,21 +260,7 @@ try_known_urls() {
 }
 
 auto_detect_serial_port() {
-  local candidate
-  for candidate in /dev/ttyUSB0 /dev/ttyACM0; do
-    if [[ -e "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  candidate="$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1 || true)"
-  if [[ -n "$candidate" ]]; then
-    printf '%s\n' "$candidate"
-    return 0
-  fi
-
-  return 1
+  first_serial_port
 }
 
 try_flash_firmware() {
@@ -348,7 +346,19 @@ main() {
     state_args+=(--serial-port "$SERIAL_PORT")
   fi
   state_env="$("$SCRIPT_DIR/check_sniffer_state.sh" "${state_args[@]}")"
-  eval "$state_env"
+  CAPTURE_READY="no"
+  FIRMWARE_STATE="unknown"
+  while IFS='=' read -r key value; do
+    case "$key" in
+      SERIAL_PORT) : ;;
+      USB_PRESENT) : ;;
+      WIRESHARK_EXTCAP_READY) : ;;
+      TSHARK_EXTCAP_READY) : ;;
+      SNIFFER_INTERFACE_VISIBLE) : ;;
+      CAPTURE_READY) CAPTURE_READY="$value" ;;
+      FIRMWARE_STATE) FIRMWARE_STATE="$value" ;;
+    esac
+  done <<< "$state_env"
   log "Sniffer state: firmware=${FIRMWARE_STATE} capture_ready=${CAPTURE_READY}"
 
   if [[ $AUTO_FIRMWARE -eq 1 ]]; then

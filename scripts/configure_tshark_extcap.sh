@@ -5,22 +5,46 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
 usage() {
   cat <<USAGE
-Usage: $0
+Usage: $0 [options]
 
 Configure tshark to see nRF Sniffer extcap by syncing personal extcap into global extcap.
 Idempotent: no changes if tshark already lists nRF Sniffer.
+
+Options:
+  --log-level LEVEL   Set shell log level: NONE, ERROR, WARN, INFO, DEBUG
+  --quiet             Equivalent to error-only logs
+  -h, --help          Show help
 USAGE
 }
 
-if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
-  usage
-  exit 0
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --log-level)
+      BLUESNIFFER_LOG_LEVEL="$2"
+      export BLUESNIFFER_LOG_LEVEL
+      shift 2
+      ;;
+    --quiet)
+      BLUESNIFFER_QUIET=1
+      export BLUESNIFFER_QUIET
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      err "Unknown option: $1"
+      usage
+      exit 2
+      ;;
+  esac
+done
 
 require_not_root
 require_sudo

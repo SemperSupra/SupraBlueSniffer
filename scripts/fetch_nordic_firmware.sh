@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
 usage() {
@@ -19,6 +19,8 @@ Options:
   --firmware-dir DIR         Destination root (default: ~/.local/share/bluesniffer/firmware)
   --force-download           Re-download even if package already exists
   --print-selection-only     Only print detected target/package info
+  --log-level LEVEL          Set shell log level: NONE, ERROR, WARN, INFO, DEBUG
+  --quiet                    Equivalent to error-only logs
   -h, --help                 Show help
 USAGE
 }
@@ -46,6 +48,16 @@ while [[ $# -gt 0 ]]; do
       PRINT_ONLY=1
       shift
       ;;
+    --log-level)
+      BLUESNIFFER_LOG_LEVEL="$2"
+      export BLUESNIFFER_LOG_LEVEL
+      shift 2
+      ;;
+    --quiet)
+      BLUESNIFFER_QUIET=1
+      export BLUESNIFFER_QUIET
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -59,13 +71,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 auto_detect_serial_port() {
-  local candidate
-  for candidate in /dev/ttyUSB0 /dev/ttyACM0; do
-    [[ -e "$candidate" ]] && { printf '%s\n' "$candidate"; return 0; }
-  done
-  candidate="$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1 || true)"
-  [[ -n "$candidate" ]] && { printf '%s\n' "$candidate"; return 0; }
-  return 1
+  first_serial_port
 }
 
 get_udev_prop() {
