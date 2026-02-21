@@ -335,7 +335,7 @@ def load_url(url: str, cache_path: Path, timeout: int = 10, force_refresh: bool 
     if cache_path.exists() and not force_refresh:
         return cache_path.read_text(encoding="utf-8", errors="replace")
 
-    req = urllib.request.Request(url, headers={"User-Agent": "BlueSnifferLookup/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "SupraBlueSnifferLookup/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         body = resp.read().decode("utf-8", errors="replace")
     cache_path.write_text(body, encoding="utf-8")
@@ -379,7 +379,7 @@ def load_sig_company_map(cache_dir: Path, timeout: int, force_refresh: bool) -> 
 
 def http_text(url: str, timeout: int) -> Tuple[Optional[str], Optional[str]]:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "BlueSnifferLookup/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "SupraBlueSnifferLookup/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             text = resp.read().decode("utf-8", errors="replace").strip()
         return text, None

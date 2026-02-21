@@ -5,6 +5,9 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEFAULT_FIRMWARE_HEX="$PROJECT_ROOT/state/firmware/current.hex"
+DEFAULT_LAST_PORT_FILE="$PROJECT_ROOT/state/firmware/last_port.txt"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
@@ -15,7 +18,7 @@ Usage: $0 [options]
 Automatically flash selected sniffer firmware when needed.
 
 Options:
-  --firmware-hex PATH    Firmware hex file (default: ~/.local/share/bluesniffer/firmware/current.hex)
+  --firmware-hex PATH    Firmware hex file (default: $DEFAULT_FIRMWARE_HEX)
   --serial-port PORT     Sniffer serial port (default: auto-detect or last_port.txt)
   --force                Flash even if sniffer appears operational
   --best-effort          Do not fail if no supported flashing backend is available
@@ -25,7 +28,7 @@ Options:
 USAGE
 }
 
-FIRMWARE_HEX="${HOME}/.local/share/bluesniffer/firmware/current.hex"
+FIRMWARE_HEX="$DEFAULT_FIRMWARE_HEX"
 SERIAL_PORT=""
 FORCE=0
 BEST_EFFORT=0
@@ -71,7 +74,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 auto_detect_serial_port() {
-  local cache="${HOME}/.local/share/bluesniffer/firmware/last_port.txt"
+  local cache="$DEFAULT_LAST_PORT_FILE"
   if [[ -z "$SERIAL_PORT" && -f "$cache" ]]; then
     local cached
     cached="$(cat "$cache")"

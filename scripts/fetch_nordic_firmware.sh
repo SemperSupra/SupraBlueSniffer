@@ -5,6 +5,8 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEFAULT_FIRMWARE_DIR="$PROJECT_ROOT/state/firmware"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
@@ -16,7 +18,7 @@ Detect sniffer hardware and download/extract the matching Nordic nRF Sniffer pac
 
 Options:
   --serial-port PORT         Serial port to inspect (default: auto-detect)
-  --firmware-dir DIR         Destination root (default: ~/.local/share/bluesniffer/firmware)
+  --firmware-dir DIR         Destination root (default: $DEFAULT_FIRMWARE_DIR)
   --force-download           Re-download even if package already exists
   --print-selection-only     Only print detected target/package info
   --log-level LEVEL          Set shell log level: NONE, ERROR, WARN, INFO, DEBUG
@@ -26,7 +28,7 @@ USAGE
 }
 
 SERIAL_PORT=""
-FIRMWARE_DIR="${HOME}/.local/share/bluesniffer/firmware"
+FIRMWARE_DIR="$DEFAULT_FIRMWARE_DIR"
 FORCE_DOWNLOAD=0
 PRINT_ONLY=0
 
@@ -164,9 +166,9 @@ download_zip() {
 
 main() {
   if ! mkdir -p "$FIRMWARE_DIR" 2>/dev/null; then
-    FIRMWARE_DIR="$PWD/state/firmware"
+    FIRMWARE_DIR="$PROJECT_ROOT/state/firmware"
     mkdir -p "$FIRMWARE_DIR"
-    warn "Default firmware dir under HOME is not writable; using $FIRMWARE_DIR"
+    warn "Configured firmware dir is not writable; using $FIRMWARE_DIR"
   fi
 
   local port="$SERIAL_PORT"

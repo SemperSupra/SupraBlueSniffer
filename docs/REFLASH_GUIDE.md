@@ -41,7 +41,7 @@ References:
 
 - Download and verify firmware package
 - Extract and select matching `.hex`
-- Stage selected firmware at `~/.local/share/bluesniffer/firmware/current.hex`
+- Stage selected firmware at `state/firmware/current.hex`
 - Flash orchestration (`scripts/flash_firmware.sh`) with idempotent skip when capture already works
 
 ## Limitations

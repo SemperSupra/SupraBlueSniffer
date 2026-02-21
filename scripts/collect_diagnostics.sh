@@ -5,6 +5,7 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
@@ -105,7 +106,7 @@ if [[ $REDACT -eq 1 ]]; then
 fi
 
 diagnostics_body() {
-  echo "BlueSniffer Host Diagnostics"
+  echo "SupraBlueSniffer Host Diagnostics"
   echo "Generated: $(date --iso-8601=seconds)"
 
   print_section "Host"
@@ -204,15 +205,14 @@ diagnostics_body() {
   fi
 
   print_section "Local Firmware Cache"
-  for fw_root in "$HOME/.local/share/bluesniffer/firmware" "$PWD/state/firmware"; do
-    if [[ -d "$fw_root" ]]; then
-      echo "firmware_root: $fw_root"
-      find "$fw_root" -maxdepth 3 -type f | sed 's/^/  /'
-      if [[ -L "$fw_root/current.hex" ]]; then
-        echo "current.hex -> $(readlink -f "$fw_root/current.hex")"
-      fi
+  local fw_root="$PROJECT_ROOT/state/firmware"
+  if [[ -d "$fw_root" ]]; then
+    echo "firmware_root: $fw_root"
+    find "$fw_root" -maxdepth 3 -type f | sed 's/^/  /'
+    if [[ -L "$fw_root/current.hex" ]]; then
+      echo "current.hex -> $(readlink -f "$fw_root/current.hex")"
     fi
-  done
+  fi
 
   print_section "Flashing Capability"
   if have_cmd nrfjprog; then
