@@ -1,0 +1,12 @@
+# Runtime outputs
+captures/
+diagnostics/
+state/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS
+*.swp
+.DS_Store
